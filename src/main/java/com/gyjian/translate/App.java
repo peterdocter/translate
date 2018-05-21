@@ -37,6 +37,7 @@ public class App {
 			String reg = "^([0-9])*:([0-9])*"; //
 			Pattern pattern = Pattern.compile(reg);
 
+			String lyric = "";
 			String str = null;
 			while (true) {
 				str = reader.readLine();
@@ -46,38 +47,48 @@ public class App {
 					Matcher matcher = pattern.matcher(str);
 
 					if ((str.length() < 5) || matcher.find()) {
+						// 如果有积聚英文原句，刚翻译并写到文件里
+						if (lyric.length() > 0) {
+							try {
+								TransApi api = new TransApi(APP_ID, SECURITY_KEY);
+
+								String query = lyric;
+								query = (api.getTransResult(query, "en", "zh"));
+
+								JSONObject jo = JSONObject.parseObject(query);
+								JSONArray jArray = jo.getJSONArray("trans_result");
+								JSONObject jo2 = (JSONObject) jArray.get(0);
+
+								// Convert from Unicode to UTF-8
+								String string = jo2.getString("dst");
+								byte[] utf8 = string.getBytes("UTF-8");
+								// Convert from UTF-8 to Unicode
+								string = new String(utf8, "UTF-8");
+
+								System.out.println(string);
+								Buff.write(utf8);
+								Buff.write('\n');
+								Buff.write(lyric.getBytes());
+								Buff.write('\n');
+
+								Buff.flush();
+							} catch (Exception e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+							
+							lyric = "";			// 翻译完，复位到空串
+						}
+												
+						
+						// 把原文写到文件
 						Buff.write(str.getBytes());
 						Buff.write('\n');
 						Buff.flush();
-					} else
-						try {
-							TransApi api = new TransApi(APP_ID, SECURITY_KEY);
-
-							String query = str;
-							query = (api.getTransResult(query, "en", "zh"));
-
-							JSONObject jo = JSONObject.parseObject(query);
-							JSONArray jArray = jo.getJSONArray("trans_result");
-							JSONObject jo2 = (JSONObject) jArray.get(0);
-
-							// Convert from Unicode to UTF-8
-							String string = jo2.getString("dst");
-							byte[] utf8 = string.getBytes("UTF-8");
-							// Convert from UTF-8 to Unicode
-							string = new String(utf8, "UTF-8");
-
-							System.out.println(string);
-							Buff.write(utf8);
-							Buff.write('\n');
-							Buff.write(str.getBytes());
-							Buff.write('\n');
-
-							Buff.flush();
-						} catch (Exception e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}
-
+					} else {						// 读到一句英文句子，先存起来
+						lyric += " " + str;
+						lyric = lyric.trim();
+					}
 				}
 
 				else
@@ -92,5 +103,6 @@ public class App {
 			e.printStackTrace();
 		}
 
+		System.out.println("完成");
 	}
 }
